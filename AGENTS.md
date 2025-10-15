@@ -2,24 +2,23 @@
 
 ## Commands
 
-**Setup:** Not yet configured
+**Setup:**
+```bash
+# (To be determined based on tech stack)
+```
 
-**Build:** Not yet configured
+**Build:** N/A
 
-**Lint:** Not yet configured
+**Lint:** N/A
 
-**Tests:** Not yet configured
+**Test:** N/A
 
-**Dev Server:** Not yet configured
+**Dev Server:** N/A
 
 ## Tech Stack
 
-Not yet configured. Repository is currently empty (contains only README.md).
-
-## Architecture
-
-To be determined.
+- To be determined (reservation page application)
 
 ## Code Style
 
-To be determined based on chosen tech stack.
+- Follow conventions established in codebase
