@@ -24,57 +24,39 @@
             <div class="date-selection">
                 <h3>Select Date</h3>
                 <input type="date" id="appointment-date" class="form-input">
+                <p id="date-error" class="error-message" style="display: none; color: var(--error); margin-top: 0.5rem;"></p>
             </div>
 
-            <div class="time-slots">
+            <div class="time-slots" id="time-slots-section" style="display: none;">
                 <h3>Available Time Slots</h3>
+                <p class="helper-text" style="color: var(--light-text); margin-bottom: 1rem;">Select a time slot for your appointment</p>
                 <div id="time-slots-container" class="time-slots-grid">
-                    <button class="time-slot">9:00 AM</button>
-                    <button class="time-slot">10:00 AM</button>
-                    <button class="time-slot">11:00 AM</button>
-                    <button class="time-slot">12:00 PM</button>
-                    <button class="time-slot">1:00 PM</button>
-                    <button class="time-slot">2:00 PM</button>
-                    <button class="time-slot">3:00 PM</button>
-                    <button class="time-slot">4:00 PM</button>
-                    <button class="time-slot">5:00 PM</button>
                 </div>
             </div>
 
-            <div class="booking-form">
+            <div class="booking-form" id="booking-form-section" style="display: none;">
                 <h3>Your Information</h3>
                 <form id="appointment-form">
                     <div class="form-group">
-                        <label for="customer-name">Full Name</label>
+                        <label for="customer-name">Full Name *</label>
                         <input type="text" id="customer-name" class="form-input" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="customer-email">Email</label>
-                        <input type="email" id="customer-email" class="form-input" required>
+                        <label for="customer-phone">Phone Number *</label>
+                        <input type="tel" id="customer-phone" class="form-input" placeholder="(555) 123-4567" required>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="customer-phone">Phone Number</label>
-                        <input type="tel" id="customer-phone" class="form-input" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="service-type">Service</label>
-                        <select id="service-type" class="form-input" required>
-                            <option value="">Select a service</option>
-                            <option value="haircut">Haircut</option>
-                            <option value="coloring">Hair Coloring</option>
-                            <option value="styling">Hair Styling</option>
-                            <option value="manicure">Manicure</option>
-                            <option value="pedicure">Pedicure</option>
-                            <option value="facial">Facial</option>
-                            <option value="makeup">Makeup</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="selected-time" value="">
                     
                     <button type="submit" class="btn btn-primary">Book Appointment</button>
                 </form>
+            </div>
+
+            <div id="confirmation-message" class="confirmation-message" style="display: none; background-color: var(--success); color: var(--white); padding: 1.5rem; border-radius: 6px; margin-top: 2rem;">
+                <h3 style="color: var(--white); margin-bottom: 1rem;">Appointment Confirmed!</h3>
+                <div id="confirmation-details"></div>
+                <button id="book-another" class="btn btn-secondary" style="margin-top: 1rem; background-color: var(--white); color: var(--dark-text);">Book Another Appointment</button>
             </div>
         </section>
     </main>
@@ -85,7 +67,221 @@
         </div>
     </footer>
 
-    <script type="module" src="data.js"></script>
-    <script type="module" src="app.js"></script>
+    <script type="module">
+        import { 
+            createAppointment, 
+            getAppointmentsByDate,
+            initializeAppointments
+        } from './appointments.js';
+
+        initializeAppointments();
+
+        const dateInput = document.getElementById('appointment-date');
+        const dateError = document.getElementById('date-error');
+        const timeSlotsSection = document.getElementById('time-slots-section');
+        const timeSlotsContainer = document.getElementById('time-slots-container');
+        const bookingFormSection = document.getElementById('booking-form-section');
+        const appointmentForm = document.getElementById('appointment-form');
+        const customerNameInput = document.getElementById('customer-name');
+        const customerPhoneInput = document.getElementById('customer-phone');
+        const selectedTimeInput = document.getElementById('selected-time');
+        const confirmationMessage = document.getElementById('confirmation-message');
+        const confirmationDetails = document.getElementById('confirmation-details');
+        const bookAnotherBtn = document.getElementById('book-another');
+
+        let selectedDate = '';
+        let selectedTime = '';
+
+        function setMinDate() {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const minDate = tomorrow.toISOString().split('T')[0];
+            dateInput.setAttribute('min', minDate);
+        }
+
+        function isMonday(date) {
+            return date.getDay() === 1;
+        }
+
+        function isTuesday(date) {
+            return date.getDay() === 2;
+        }
+
+        function isWednesday(date) {
+            return date.getDay() === 3;
+        }
+
+        function isThursday(date) {
+            return date.getDay() === 4;
+        }
+
+        function isValidDay(date) {
+            const day = date.getDay();
+            return day >= 1 && day <= 4;
+        }
+
+        function generateTimeSlots() {
+            const slots = [];
+            const startHour = 9;
+            const endHour = 18;
+            
+            for (let hour = startHour; hour < endHour; hour++) {
+                slots.push(`${formatHour(hour)}:00`);
+                slots.push(`${formatHour(hour)}:30`);
+            }
+            
+            return slots;
+        }
+
+        function formatHour(hour) {
+            return hour.toString().padStart(2, '0');
+        }
+
+        function formatTimeDisplay(time24) {
+            const [hour, minute] = time24.split(':');
+            const hourNum = parseInt(hour);
+            const ampm = hourNum >= 12 ? 'PM' : 'AM';
+            const hour12 = hourNum % 12 || 12;
+            return `${hour12}:${minute} ${ampm}`;
+        }
+
+        function renderTimeSlots(date) {
+            timeSlotsContainer.innerHTML = '';
+            const slots = generateTimeSlots();
+            const bookedAppointments = getAppointmentsByDate(date);
+            const bookedTimes = bookedAppointments
+                .filter(apt => apt.status !== 'cancelled')
+                .map(apt => apt.time);
+
+            slots.forEach(slot => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'time-slot';
+                button.textContent = formatTimeDisplay(slot);
+                button.dataset.time = slot;
+
+                if (bookedTimes.includes(slot)) {
+                    button.disabled = true;
+                    button.title = 'This time slot is already booked';
+                } else {
+                    button.addEventListener('click', () => selectTimeSlot(slot, button));
+                }
+
+                timeSlotsContainer.appendChild(button);
+            });
+        }
+
+        function selectTimeSlot(time, button) {
+            const allSlots = document.querySelectorAll('.time-slot');
+            allSlots.forEach(slot => slot.classList.remove('selected'));
+            
+            button.classList.add('selected');
+            selectedTime = time;
+            selectedTimeInput.value = time;
+            
+            bookingFormSection.style.display = 'block';
+            bookingFormSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        dateInput.addEventListener('change', (e) => {
+            const dateValue = e.target.value;
+            
+            if (!dateValue) {
+                timeSlotsSection.style.display = 'none';
+                bookingFormSection.style.display = 'none';
+                dateError.style.display = 'none';
+                return;
+            }
+
+            const selectedDateObj = new Date(dateValue + 'T00:00:00');
+            
+            if (!isValidDay(selectedDateObj)) {
+                dateError.textContent = 'Please select a date between Monday and Thursday.';
+                dateError.style.display = 'block';
+                timeSlotsSection.style.display = 'none';
+                bookingFormSection.style.display = 'none';
+                dateInput.value = '';
+                return;
+            }
+
+            dateError.style.display = 'none';
+            selectedDate = dateValue;
+            renderTimeSlots(dateValue);
+            timeSlotsSection.style.display = 'block';
+            bookingFormSection.style.display = 'none';
+            selectedTime = '';
+            selectedTimeInput.value = '';
+            confirmationMessage.style.display = 'none';
+        });
+
+        appointmentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            if (!selectedDate || !selectedTime) {
+                alert('Please select a date and time slot.');
+                return;
+            }
+
+            const customerName = customerNameInput.value.trim();
+            const customerPhone = customerPhoneInput.value.trim();
+
+            if (!customerName || !customerPhone) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+
+            const appointmentData = {
+                date: selectedDate,
+                time: selectedTime,
+                clientName: customerName,
+                clientPhone: customerPhone,
+                status: 'confirmed'
+            };
+
+            const result = createAppointment(appointmentData);
+
+            if (result.success) {
+                appointmentForm.reset();
+                selectedTimeInput.value = '';
+                
+                const dateObj = new Date(selectedDate + 'T00:00:00');
+                const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+
+                confirmationDetails.innerHTML = `
+                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;"><strong>Date:</strong> ${formattedDate}</p>
+                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;"><strong>Time:</strong> ${formatTimeDisplay(selectedTime)}</p>
+                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;"><strong>Name:</strong> ${customerName}</p>
+                    <p style="font-size: 0.95rem; margin-top: 1rem; font-style: italic;">We'll contact you at ${customerPhone} to confirm your appointment.</p>
+                `;
+                
+                timeSlotsSection.style.display = 'none';
+                bookingFormSection.style.display = 'none';
+                confirmationMessage.style.display = 'block';
+                confirmationMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                alert('Failed to book appointment: ' + result.error);
+            }
+        });
+
+        bookAnotherBtn.addEventListener('click', () => {
+            dateInput.value = '';
+            selectedDate = '';
+            selectedTime = '';
+            selectedTimeInput.value = '';
+            timeSlotsContainer.innerHTML = '';
+            timeSlotsSection.style.display = 'none';
+            bookingFormSection.style.display = 'none';
+            confirmationMessage.style.display = 'none';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        setMinDate();
+    </script>
 </body>
 </html>
