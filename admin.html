@@ -5,91 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beauty Salon - Admin Panel</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        .statistics-section {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background-color: var(--secondary-color);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 2px solid var(--border-color);
-            text-align: center;
-        }
-
-        .stat-card h3 {
-            font-size: 1rem;
-            color: var(--light-text);
-            margin-bottom: 0.5rem;
-            font-weight: 400;
-        }
-
-        .stat-card .stat-value {
-            font-size: 2.5rem;
-            color: var(--accent-color);
-            font-weight: 300;
-        }
-
-        .appointments-table tbody tr {
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .appointments-table tbody tr:hover {
-            background-color: var(--secondary-color);
-        }
-
-        .btn-cancel {
-            background-color: var(--error);
-            color: var(--white);
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-family: inherit;
-            transition: opacity 0.2s ease;
-        }
-
-        .btn-cancel:hover {
-            opacity: 0.8;
-        }
-
-        .btn-cancel:disabled {
-            background-color: #d0d0d0;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .error-message {
-            color: var(--error);
-            margin-top: 0.5rem;
-            font-size: 0.95rem;
-        }
-
-        .filters-row {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .filters-row .form-input {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .no-appointments {
-            text-align: center;
-            padding: 3rem;
-            color: var(--light-text);
-            font-size: 1.1rem;
-        }
-    </style>
 </head>
 <body>
     <header>
@@ -108,51 +23,35 @@
                 <h2>Admin Login</h2>
                 <form id="login-form">
                     <div class="form-group">
+                        <label for="admin-username">Username</label>
+                        <input type="text" id="admin-username" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
                         <label for="admin-password">Password</label>
                         <input type="password" id="admin-password" class="form-input" required>
                     </div>
-                    
-                    <p id="login-error" class="error-message" style="display: none;"></p>
                     
                     <button type="submit" class="btn btn-primary">Login</button>
                 </form>
             </div>
 
-            <div id="dashboard-section" style="display: none;">
+            <div id="appointments-section" class="appointments-container" style="display: none;">
                 <div class="admin-header">
                     <h2>Appointments Dashboard</h2>
                     <button id="logout-btn" class="btn btn-secondary">Logout</button>
                 </div>
-
-                <div class="statistics-section">
-                    <div class="stat-card">
-                        <h3>Total Reservations</h3>
-                        <div class="stat-value" id="stat-total">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Confirmed</h3>
-                        <div class="stat-value" id="stat-confirmed">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Cancelled</h3>
-                        <div class="stat-value" id="stat-cancelled">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Busiest Day</h3>
-                        <div class="stat-value" id="stat-busiest-day" style="font-size: 1.5rem;">-</div>
-                    </div>
-                </div>
                 
-                <div class="filters-row">
+                <div class="appointments-filters">
                     <select id="filter-status" class="form-input">
-                        <option value="all">All Statuses</option>
+                        <option value="all">All Appointments</option>
+                        <option value="pending">Pending</option>
                         <option value="confirmed">Confirmed</option>
+                        <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                     </select>
                     
-                    <input type="date" id="filter-date-start" class="form-input" placeholder="Start Date">
-                    
-                    <input type="date" id="filter-date-end" class="form-input" placeholder="End Date">
+                    <input type="date" id="filter-date" class="form-input" placeholder="Filter by date">
                 </div>
 
                 <div class="appointments-table-wrapper">
@@ -161,12 +60,16 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Time</th>
-                                <th>Client Name</th>
+                                <th>Customer Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Service</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="appointments-table-body">
+                            <!-- Appointments will be populated here -->
                         </tbody>
                     </table>
                 </div>
@@ -180,229 +83,7 @@
         </div>
     </footer>
 
-    <script type="module">
-        import { 
-            getAllAppointments,
-            updateAppointment,
-            initializeAppointments
-        } from './appointments.js';
-
-        initializeAppointments();
-
-        const ADMIN_PASSWORD_KEY = 'admin_password';
-        const DEFAULT_PASSWORD = 'admin123';
-        const SESSION_KEY = 'admin_logged_in';
-
-        function initializeAdminPassword() {
-            if (!localStorage.getItem(ADMIN_PASSWORD_KEY)) {
-                localStorage.setItem(ADMIN_PASSWORD_KEY, DEFAULT_PASSWORD);
-            }
-        }
-
-        function checkLogin() {
-            const loggedIn = sessionStorage.getItem(SESSION_KEY);
-            return loggedIn === 'true';
-        }
-
-        function setLoggedIn(value) {
-            sessionStorage.setItem(SESSION_KEY, value ? 'true' : 'false');
-        }
-
-        function validatePassword(password) {
-            const storedPassword = localStorage.getItem(ADMIN_PASSWORD_KEY);
-            return password === storedPassword;
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString + 'T00:00:00');
-            return date.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-            });
-        }
-
-        function formatTime(time24) {
-            const [hour, minute] = time24.split(':');
-            const hourNum = parseInt(hour);
-            const ampm = hourNum >= 12 ? 'PM' : 'AM';
-            const hour12 = hourNum % 12 || 12;
-            return `${hour12}:${minute} ${ampm}`;
-        }
-
-        function getDayOfWeek(dateString) {
-            const date = new Date(dateString + 'T00:00:00');
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            return days[date.getDay()];
-        }
-
-        function calculateStatistics(appointments) {
-            const total = appointments.length;
-            const confirmed = appointments.filter(apt => apt.status === 'confirmed').length;
-            const cancelled = appointments.filter(apt => apt.status === 'cancelled').length;
-            
-            const dayCount = {};
-            appointments.forEach(apt => {
-                const day = getDayOfWeek(apt.date);
-                dayCount[day] = (dayCount[day] || 0) + 1;
-            });
-
-            let busiestDay = '-';
-            let maxCount = 0;
-            for (const [day, count] of Object.entries(dayCount)) {
-                if (count > maxCount) {
-                    maxCount = count;
-                    busiestDay = day;
-                }
-            }
-
-            return { total, confirmed, cancelled, busiestDay };
-        }
-
-        function updateStatistics() {
-            const appointments = getAllAppointments();
-            const stats = calculateStatistics(appointments);
-            
-            document.getElementById('stat-total').textContent = stats.total;
-            document.getElementById('stat-confirmed').textContent = stats.confirmed;
-            document.getElementById('stat-cancelled').textContent = stats.cancelled;
-            document.getElementById('stat-busiest-day').textContent = stats.busiestDay;
-        }
-
-        function filterAppointments(appointments) {
-            const statusFilter = document.getElementById('filter-status').value;
-            const dateStartFilter = document.getElementById('filter-date-start').value;
-            const dateEndFilter = document.getElementById('filter-date-end').value;
-
-            let filtered = [...appointments];
-
-            if (statusFilter !== 'all') {
-                filtered = filtered.filter(apt => apt.status === statusFilter);
-            }
-
-            if (dateStartFilter) {
-                filtered = filtered.filter(apt => apt.date >= dateStartFilter);
-            }
-
-            if (dateEndFilter) {
-                filtered = filtered.filter(apt => apt.date <= dateEndFilter);
-            }
-
-            return filtered;
-        }
-
-        function renderAppointments() {
-            const allAppointments = getAllAppointments();
-            const appointments = filterAppointments(allAppointments);
-            const tbody = document.getElementById('appointments-table-body');
-            
-            if (appointments.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="no-appointments">
-                            No appointments found
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            appointments.sort((a, b) => {
-                if (a.date !== b.date) {
-                    return a.date.localeCompare(b.date);
-                }
-                return a.time.localeCompare(b.time);
-            });
-
-            tbody.innerHTML = appointments.map(apt => {
-                const isCancelled = apt.status === 'cancelled';
-                return `
-                    <tr data-id="${apt.id}">
-                        <td>${formatDate(apt.date)}</td>
-                        <td>${formatTime(apt.time)}</td>
-                        <td>${apt.clientName}</td>
-                        <td>
-                            <span class="status-badge status-${apt.status}">${apt.status}</span>
-                        </td>
-                        <td>
-                            <button class="btn-cancel" data-id="${apt.id}" ${isCancelled ? 'disabled' : ''}>
-                                ${isCancelled ? 'Cancelled' : 'Cancel'}
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            document.querySelectorAll('.btn-cancel').forEach(btn => {
-                btn.addEventListener('click', handleCancelAppointment);
-            });
-        }
-
-        function handleCancelAppointment(e) {
-            e.stopPropagation();
-            const appointmentId = e.target.dataset.id;
-            
-            if (confirm('Are you sure you want to cancel this appointment?')) {
-                const result = updateAppointment(appointmentId, { status: 'cancelled' });
-                
-                if (result.success) {
-                    updateStatistics();
-                    renderAppointments();
-                } else {
-                    alert('Failed to cancel appointment: ' + result.error);
-                }
-            }
-        }
-
-        const loginSection = document.getElementById('login-section');
-        const dashboardSection = document.getElementById('dashboard-section');
-        const loginForm = document.getElementById('login-form');
-        const loginError = document.getElementById('login-error');
-        const passwordInput = document.getElementById('admin-password');
-        const logoutBtn = document.getElementById('logout-btn');
-        const filterStatus = document.getElementById('filter-status');
-        const filterDateStart = document.getElementById('filter-date-start');
-        const filterDateEnd = document.getElementById('filter-date-end');
-
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const password = passwordInput.value;
-            
-            if (validatePassword(password)) {
-                setLoggedIn(true);
-                loginSection.style.display = 'none';
-                dashboardSection.style.display = 'block';
-                loginError.style.display = 'none';
-                passwordInput.value = '';
-                
-                updateStatistics();
-                renderAppointments();
-            } else {
-                loginError.textContent = 'Invalid password. Please try again.';
-                loginError.style.display = 'block';
-                passwordInput.value = '';
-            }
-        });
-
-        logoutBtn.addEventListener('click', () => {
-            setLoggedIn(false);
-            dashboardSection.style.display = 'none';
-            loginSection.style.display = 'block';
-        });
-
-        filterStatus.addEventListener('change', renderAppointments);
-        filterDateStart.addEventListener('change', renderAppointments);
-        filterDateEnd.addEventListener('change', renderAppointments);
-
-        initializeAdminPassword();
-
-        if (checkLogin()) {
-            loginSection.style.display = 'none';
-            dashboardSection.style.display = 'block';
-            updateStatistics();
-            renderAppointments();
-        }
-    </script>
+    <script type="module" src="data.js"></script>
+    <script type="module" src="admin.js"></script>
 </body>
 </html>
